@@ -1,0 +1,216 @@
+
+# Smart Lock Entry System - Mobile App Setup
+
+## Prerequisites
+- Node.js 18+ installed
+- Expo CLI installed globally: `npm install -g expo-cli`
+- iOS Simulator (Mac) or Android Emulator
+- Physical device for testing (recommended)
+
+## Installation
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Start Development Server
+```bash
+npm run dev
+```
+
+This will start the Expo development server with tunnel mode enabled.
+
+### 3. Run on Device
+
+#### iOS (Mac only)
+```bash
+npm run ios
+```
+
+#### Android
+```bash
+npm run android
+```
+
+#### Physical Device
+1. Install Expo Go app from App Store or Play Store
+2. Scan the QR code from the terminal
+3. App will load on your device
+
+## Configuration
+
+### 1. Configure Raspberry Pi Connection
+
+After launching the app:
+1. Login or continue as guest
+2. Navigate to Settings tab
+3. Enter your Raspberry Pi URL (e.g., http://192.168.1.100:8000)
+4. Save settings
+
+### 2. Test Connection
+
+Go to Home tab and verify:
+- Connection status shows "Connected"
+- Lock/Unlock buttons work
+- Camera stream loads
+
+## Features
+
+### Guest Mode
+- Lock/Unlock control
+- Live camera stream
+- Basic functionality
+
+### Logged-In Mode
+- All guest features
+- Motion clips viewing
+- Activity logs
+- Full history
+
+## App Structure
+
+```
+app/
+├── (tabs)/              # Main tab navigation
+│   ├── (home)/         # Home screen with lock control
+│   ├── camera.tsx      # Live camera view
+│   ├── clips.tsx       # Motion clips list
+│   ├── activity.tsx    # Activity logs
+│   └── settings.tsx    # App settings
+├── auth/               # Authentication screens
+│   ├── login.tsx       # Login screen
+│   └── register.tsx    # Registration screen
+└── _layout.tsx         # Root layout with providers
+
+src/
+├── api/                # API client
+│   └── lockApi.ts      # Lock API methods
+├── components/         # Reusable components
+│   ├── LockControl.tsx # Lock control UI
+│   └── CameraStream.tsx # Camera stream component
+├── contexts/           # React contexts
+│   ├── AuthContext.tsx # Authentication state
+│   └── DeviceContext.tsx # Device settings
+├── hooks/              # Custom hooks
+│   └── useWebSocket.ts # WebSocket connection
+└── types/              # TypeScript types
+    └── index.ts        # Type definitions
+```
+
+## Troubleshooting
+
+### Cannot Connect to Raspberry Pi
+
+1. Verify Raspberry Pi is on same network
+2. Check firewall settings
+3. Ping the Pi: `ping 192.168.1.XXX`
+4. Verify server is running on Pi
+5. Try using IP address instead of hostname
+
+### Camera Stream Not Loading
+
+1. Check camera is enabled on Pi
+2. Verify camera stream endpoint works in browser
+3. Check network bandwidth
+4. Try reducing camera resolution on Pi
+
+### WebSocket Connection Issues
+
+1. Check WebSocket endpoint is accessible
+2. Verify no proxy blocking WebSocket
+3. Check server logs on Pi
+4. Try restarting the app
+
+### App Crashes on Startup
+
+1. Clear app cache
+2. Reinstall dependencies: `rm -rf node_modules && npm install`
+3. Clear Expo cache: `expo start -c`
+4. Check for error logs in terminal
+
+## Development
+
+### Adding New Features
+
+1. Create new screen in `app/` folder
+2. Add to tab navigation in `app/(tabs)/_layout.tsx`
+3. Update API client if needed
+4. Add types to `src/types/index.ts`
+
+### Styling
+
+All colors are defined in `styles/commonStyles.ts`:
+- Background: #121212 (Dark grey)
+- Text: #FFFFFF (White)
+- Primary: #2196F3 (Blue)
+- Secondary: #03DAC5 (Teal)
+- Accent: #FF4081 (Pink)
+
+### Testing
+
+Test on both platforms:
+- iOS Simulator
+- Android Emulator
+- Physical devices
+
+## Building for Production
+
+### iOS
+```bash
+npm run build:ios
+```
+
+### Android
+```bash
+npm run build:android
+```
+
+### Web
+```bash
+npm run build:web
+```
+
+## Environment Variables
+
+Create `.env` file for configuration:
+```
+EXPO_PUBLIC_DEFAULT_PI_URL=http://192.168.1.100:8000
+```
+
+## Performance Tips
+
+1. Use production build for testing
+2. Enable Hermes engine for Android
+3. Optimize images and assets
+4. Minimize re-renders with React.memo
+5. Use FlatList for long lists
+
+## Security Best Practices
+
+1. Never commit sensitive data
+2. Use secure storage for tokens
+3. Implement proper authentication
+4. Validate all user inputs
+5. Use HTTPS in production
+6. Implement rate limiting
+
+## Support
+
+For issues and questions:
+1. Check console logs
+2. Review error messages
+3. Test on different devices
+4. Check network connectivity
+5. Verify Pi backend is running
+
+## Next Steps
+
+1. Implement user authentication backend
+2. Add push notifications
+3. Implement biometric authentication
+4. Add multiple lock support
+5. Create admin dashboard
+6. Add scheduling features
+7. Implement geofencing
+8. Add voice control integration

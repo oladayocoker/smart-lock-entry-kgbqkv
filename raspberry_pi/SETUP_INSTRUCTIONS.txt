@@ -1,0 +1,176 @@
+
+# Smart Lock Entry System - Raspberry Pi Backend Setup
+
+## Hardware Requirements
+- Raspberry Pi 4 (or newer)
+- Pi Camera Module (v2 or v3)
+- Servo Motor (for lock mechanism)
+- Power supply for Raspberry Pi
+- MicroSD card (16GB+)
+
+## Software Installation
+
+### 1. Update Raspberry Pi OS
+```bash
+sudo apt-get update
+sudo apt-get upgrade -y
+```
+
+### 2. Install Python Dependencies
+```bash
+cd raspberry_pi
+pip3 install -r requirements.txt
+```
+
+### 3. Enable Camera
+```bash
+sudo raspi-config
+# Navigate to Interface Options > Camera > Enable
+```
+
+### 4. Configure GPIO
+The lock motor uses GPIO pin 18 by default. You can change this in motor.py.
+
+### 5. Test Components
+
+Test Motor:
+```bash
+python3 motor.py
+```
+
+Test Camera:
+```bash
+python3 camera_stream.py
+```
+
+Test Motion Detection:
+```bash
+python3 motion_detection.py
+```
+
+## Running the Server
+
+### Development Mode
+```bash
+python3 server.py
+```
+
+### Production Mode (with Uvicorn)
+```bash
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+### Run as Background Service
+Create a systemd service file:
+
+```bash
+sudo nano /etc/systemd/system/smartlock.service
+```
+
+Add the following content:
+```
+[Unit]
+Description=Smart Lock Entry API
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/raspberry_pi
+ExecStart=/usr/bin/python3 /home/pi/raspberry_pi/server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+```bash
+sudo systemctl enable smartlock.service
+sudo systemctl start smartlock.service
+sudo systemctl status smartlock.service
+```
+
+## Network Configuration
+
+### Find Your Raspberry Pi IP Address
+```bash
+hostname -I
+```
+
+### Configure Firewall (if enabled)
+```bash
+sudo ufw allow 8000/tcp
+```
+
+### Access from Mobile App
+Use the IP address in the format: http://192.168.1.XXX:8000
+
+## API Endpoints
+
+- GET  /                    - Health check
+- GET  /lock/state          - Get current lock state
+- POST /lock/command        - Send lock/unlock command
+- GET  /camera/live         - Live MJPEG camera stream
+- GET  /clips               - List motion clips
+- GET  /clips/{filename}    - Download specific clip
+- GET  /activity            - Get activity logs
+- WS   /ws/lock             - WebSocket for real-time updates
+
+## Troubleshooting
+
+### Camera Not Working
+- Check camera cable connection
+- Verify camera is enabled in raspi-config
+- Test with: `libcamera-hello`
+
+### GPIO Permission Issues
+- Add user to gpio group: `sudo usermod -a -G gpio pi`
+- Reboot: `sudo reboot`
+
+### Port Already in Use
+- Check running processes: `sudo lsof -i :8000`
+- Kill process: `sudo kill -9 <PID>`
+
+### Motion Detection Too Sensitive
+- Adjust threshold in motion_detection.py
+- Increase min_area parameter
+
+## Security Recommendations
+
+1. Change default credentials
+2. Use HTTPS with SSL certificates
+3. Implement authentication tokens
+4. Set up firewall rules
+5. Keep system updated
+6. Use strong passwords
+7. Enable fail2ban for SSH protection
+
+## Performance Optimization
+
+- Reduce camera resolution for better performance
+- Adjust motion detection sensitivity
+- Limit clip recording duration
+- Clean up old clips regularly
+- Monitor CPU and memory usage
+
+## Maintenance
+
+### View Logs
+```bash
+sudo journalctl -u smartlock.service -f
+```
+
+### Restart Service
+```bash
+sudo systemctl restart smartlock.service
+```
+
+### Clean Up Old Clips
+```bash
+find clips/ -type f -mtime +7 -delete
+```
+
+## Support
+
+For issues and questions, check the project documentation or create an issue on GitHub.
