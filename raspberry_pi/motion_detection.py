@@ -12,6 +12,8 @@ import time
 
 try:
     from picamera2 import Picamera2
+    from picamera2.encoders import H264Encoder
+    from picamera2.outputs import FileOutput
     PICAMERA_AVAILABLE = True
 except ImportError:
     print("picamera2 not available. Running in simulation mode.")
@@ -32,23 +34,29 @@ class MotionDetector:
         self.motion_detected = False
         self.clips_dir = Path("clips")
         self.clips_dir.mkdir(exist_ok=True)
+        self.camera = None
         
         if PICAMERA_AVAILABLE:
             try:
                 # Initialize camera for motion detection
                 self.camera = Picamera2()
+                
+                # Create configuration for still capture
                 config = self.camera.create_still_configuration(
-                    main={"size": (640, 480)}
+                    main={"size": (640, 480), "format": "RGB888"}
                 )
                 self.camera.configure(config)
                 self.camera.start()
-                time.sleep(2)  # Camera warm-up
+                
+                # Camera warm-up
+                time.sleep(2)
+                
                 print("Motion detector initialized with Pi Camera")
             except Exception as e:
                 print(f"Error initializing camera for motion detection: {e}")
+                print("Falling back to simulation mode")
                 self.camera = None
         else:
-            self.camera = None
             print("Motion detector initialized in simulation mode")
     
     def detect_motion(self):
@@ -68,7 +76,7 @@ class MotionDetector:
             frame = self.camera.capture_array()
             
             # Convert to grayscale
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             gray = cv2.GaussianBlur(gray, (21, 21), 0)
             
             # Initialize previous frame
@@ -125,23 +133,56 @@ class MotionDetector:
         try:
             print(f"Recording clip: {filename}")
             
-            # Setup video writer
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(str(filepath), fourcc, 20.0, (640, 480))
+            # Stop current camera operations
+            was_running = self.camera.started
+            if was_running:
+                self.camera.stop()
             
-            # Record frames
-            start_time = time.time()
-            while time.time() - start_time < duration:
-                frame = self.camera.capture_array()
-                out.write(frame)
+            # Configure for video recording
+            video_config = self.camera.create_video_configuration(
+                main={"size": (640, 480), "format": "RGB888"}
+            )
+            self.camera.configure(video_config)
             
-            out.release()
+            # Setup encoder
+            encoder = H264Encoder(bitrate=10000000)
+            output = FileOutput(str(filepath))
+            
+            # Start recording
+            self.camera.start_recording(encoder, output)
+            
+            # Record for specified duration
+            time.sleep(duration)
+            
+            # Stop recording
+            self.camera.stop_recording()
+            
+            # Restart camera for motion detection if it was running
+            if was_running:
+                still_config = self.camera.create_still_configuration(
+                    main={"size": (640, 480), "format": "RGB888"}
+                )
+                self.camera.configure(still_config)
+                self.camera.start()
+                time.sleep(1)  # Brief warm-up
+            
             print(f"Clip recorded: {filename}")
             
             return filename
         
         except Exception as e:
             print(f"Error recording clip: {e}")
+            # Ensure camera is restarted
+            try:
+                if not self.camera.started:
+                    still_config = self.camera.create_still_configuration(
+                        main={"size": (640, 480), "format": "RGB888"}
+                    )
+                    self.camera.configure(still_config)
+                    self.camera.start()
+            except Exception as restart_error:
+                print(f"Error restarting camera: {restart_error}")
+            
             return filename
     
     def cleanup(self):
@@ -149,7 +190,8 @@ class MotionDetector:
         print("Cleaning up motion detector...")
         if PICAMERA_AVAILABLE and self.camera is not None:
             try:
-                self.camera.stop()
+                if self.camera.started:
+                    self.camera.stop()
                 self.camera.close()
             except Exception as e:
                 print(f"Error cleaning up motion detector: {e}")

@@ -1,247 +1,166 @@
 
-# Smart Lock Entry System - Raspberry Pi Backend Setup
+===========================================
+RASPBERRY PI BACKEND SETUP INSTRUCTIONS
+===========================================
 
-## Hardware Requirements
-- Raspberry Pi 4 (or newer)
-- Pi Camera Module (v2 or v3)
-- Servo Motor (for lock mechanism)
-- Power supply for Raspberry Pi
-- MicroSD card (16GB+)
+This guide will help you set up and run the Smart Lock Entry backend on your Raspberry Pi.
 
-## Software Installation
+PREREQUISITES:
+--------------
+1. Raspberry Pi (3B+, 4, or 5 recommended)
+2. Raspberry Pi Camera Module (v1, v2, or HQ)
+3. MicroSD card with Raspberry Pi OS installed
+4. Internet connection
+5. Python 3.9 or higher
 
-### 1. Update Raspberry Pi OS
-```bash
+STEP 1: ENABLE THE CAMERA
+--------------------------
+1. Open terminal on your Raspberry Pi
+2. Run: sudo raspi-config
+3. Navigate to: Interface Options > Camera
+4. Select "Yes" to enable the camera
+5. Reboot: sudo reboot
+
+STEP 2: UPDATE SYSTEM
+----------------------
 sudo apt-get update
 sudo apt-get upgrade -y
-```
 
-### 2. Install Python Dependencies
-```bash
-cd raspberry_pi
+STEP 3: INSTALL SYSTEM DEPENDENCIES
+------------------------------------
+sudo apt-get install -y python3-pip python3-dev
+sudo apt-get install -y libcap-dev
+sudo apt-get install -y python3-opencv
+sudo apt-get install -y libatlas-base-dev
+sudo apt-get install -y python3-picamera2
+
+STEP 4: INSTALL PYTHON DEPENDENCIES
+------------------------------------
+cd ~/smart-lock-entry/raspberry_pi
 pip3 install -r requirements.txt
-```
 
-### 3. Enable Camera
-```bash
-sudo raspi-config
-# Navigate to Interface Options > Camera > Enable
-```
+Note: If you encounter issues with picamera2, install it separately:
+sudo apt-get install -y python3-picamera2
 
-### 4. Configure GPIO
-The lock motor uses GPIO pin 18 by default. You can change this in motor.py.
+STEP 5: CONFIGURE GPIO (Optional)
+----------------------------------
+If you're using GPIO pins for the lock motor:
+1. Make sure your user is in the gpio group:
+   sudo usermod -a -G gpio $USER
+2. Log out and log back in for changes to take effect
 
-### 5. Test Components
-
-Test Motor:
-```bash
-python3 motor.py
-```
-
-Test Camera:
-```bash
-python3 camera_stream.py
-```
-
-Test Motion Detection:
-```bash
-python3 motion_detection.py
-```
-
-## Finding Your Raspberry Pi IP Address
-
-**IMPORTANT:** You need to find your Raspberry Pi's actual network IP address to connect from your mobile device.
-
-### Method 1: Using hostname -I (Recommended)
-```bash
+STEP 6: FIND YOUR RASPBERRY PI'S IP ADDRESS
+--------------------------------------------
+Run this command to find your Pi's local IP address:
 hostname -I
-```
-This will show all IP addresses. Look for the one that starts with:
-- 192.168.x.x (most common for home networks)
-- 10.x.x.x (some routers use this)
-- 172.16.x.x to 172.31.x.x (less common)
 
-**IGNORE** addresses like:
-- 127.0.0.1 or 127.0.1.1 (loopback - won't work from mobile)
-- 169.254.x.x (link-local - won't work)
+Example output: 192.168.1.100
 
-### Method 2: Using ip command
-```bash
-ip addr show
-```
-Look for the IP address under your network interface (usually eth0 for Ethernet or wlan0 for WiFi).
+IMPORTANT: Do NOT use 127.0.0.1 or 127.0.1.1 - these are loopback addresses
+and won't work from your mobile device!
 
-### Method 3: Using ifconfig
-```bash
-ifconfig
-```
-Look for "inet" address under eth0 (Ethernet) or wlan0 (WiFi).
-
-### Method 4: Check your router
-Log into your router's admin panel and look for connected devices. Find your Raspberry Pi in the list.
-
-### Example Output
-If you see:
-```
-192.168.1.150 127.0.1.1
-```
-Use **192.168.1.150** (NOT 127.0.1.1)
-
-## Running the Server
-
-### Development Mode
-```bash
+STEP 7: RUN THE SERVER
+----------------------
 python3 server.py
-```
 
-The server will start on `0.0.0.0:8000`, which means it's accessible from any network interface.
+The server will start on port 8000.
+You should see output like:
+  INFO:     Started server process
+  INFO:     Uvicorn running on http://0.0.0.0:8000
 
-### Production Mode (with Uvicorn)
-```bash
-uvicorn server:app --host 0.0.0.0 --port 8000
-```
+STEP 8: CONFIGURE MOBILE APP
+-----------------------------
+1. Open the mobile app
+2. Go to Settings
+3. Enter your Raspberry Pi URL: http://YOUR_PI_IP:8000
+   Example: http://192.168.1.100:8000
+4. Save settings
 
-### Run as Background Service
-Create a systemd service file:
+STEP 9: TEST THE CONNECTION
+----------------------------
+From another device on the same network, open a web browser and visit:
+http://YOUR_PI_IP:8000
 
-```bash
-sudo nano /etc/systemd/system/smartlock.service
-```
+You should see a JSON response with system status.
 
-Add the following content:
-```
-[Unit]
-Description=Smart Lock Entry API
-After=network.target
+TROUBLESHOOTING:
+----------------
 
-[Service]
-Type=simple
-User=pi
-WorkingDirectory=/home/pi/raspberry_pi
-ExecStart=/usr/bin/python3 /home/pi/raspberry_pi/server.py
-Restart=always
+1. "ModuleNotFoundError: No module named 'uvicorn'"
+   Solution: pip3 install uvicorn
 
-[Install]
-WantedBy=multi-user.target
-```
+2. "AttributeError: 'Picamera2' object has no attribute 'allocator'"
+   Solution: Update picamera2:
+   sudo apt-get update
+   sudo apt-get install -y python3-picamera2
+   
+   Or upgrade via pip:
+   pip3 install --upgrade picamera2
 
-Enable and start the service:
-```bash
-sudo systemctl enable smartlock.service
-sudo systemctl start smartlock.service
-sudo systemctl status smartlock.service
-```
+3. "Camera init sequence did not complete"
+   Solutions:
+   - Check camera cable connection
+   - Enable camera in raspi-config
+   - Reboot the Pi
+   - Check if another process is using the camera:
+     sudo fuser -v /dev/video0
 
-## Network Configuration
+4. "Permission denied" errors with GPIO
+   Solution: Add user to gpio group:
+   sudo usermod -a -G gpio $USER
+   Then log out and back in
 
-### Verify Server is Running
-After starting the server, verify it's accessible:
+5. Can't connect from mobile app
+   Solutions:
+   - Verify Pi and phone are on same WiFi network
+   - Check firewall settings: sudo ufw allow 8000
+   - Use the correct IP (not 127.0.0.1)
+   - Ping the Pi from your phone's network
 
-1. From the Raspberry Pi itself:
-```bash
-curl http://localhost:8000
-```
+6. "Address already in use" error
+   Solution: Kill existing process on port 8000:
+   sudo lsof -ti:8000 | xargs kill -9
 
-2. From another device on the same network:
-```bash
-curl http://YOUR_PI_IP:8000
-```
-Replace YOUR_PI_IP with the actual IP address (e.g., 192.168.1.150)
+RUNNING AS A SERVICE (Optional):
+---------------------------------
+To run the server automatically on boot:
 
-### Configure Firewall (if enabled)
-```bash
-sudo ufw allow 8000/tcp
-```
+1. Create a systemd service file:
+   sudo nano /etc/systemd/system/smart-lock.service
 
-### Access from Mobile App
-1. Make sure your mobile device is on the **same WiFi network** as your Raspberry Pi
-2. In the mobile app settings, enter the URL in this format:
-   ```
-   http://192.168.1.150:8000
-   ```
-   Replace `192.168.1.150` with your actual Raspberry Pi IP address
+2. Add this content:
+   [Unit]
+   Description=Smart Lock Entry API
+   After=network.target
 
-### Troubleshooting Network Connection
+   [Service]
+   Type=simple
+   User=pi
+   WorkingDirectory=/home/pi/smart-lock-entry/raspberry_pi
+   ExecStart=/usr/bin/python3 /home/pi/smart-lock-entry/raspberry_pi/server.py
+   Restart=always
 
-**Problem:** Mobile app can't connect to Raspberry Pi
+   [Install]
+   WantedBy=multi-user.target
 
-**Solutions:**
-1. Verify both devices are on the same WiFi network
-2. Check the IP address is correct (not 127.0.0.1 or 127.0.1.1)
-3. Verify the server is running: `sudo systemctl status smartlock.service`
-4. Test from another device: `curl http://YOUR_PI_IP:8000`
-5. Check firewall settings: `sudo ufw status`
-6. Ping the Raspberry Pi from your mobile device (use a network tool app)
+3. Enable and start the service:
+   sudo systemctl enable smart-lock.service
+   sudo systemctl start smart-lock.service
 
-**Problem:** IP address keeps changing
+4. Check status:
+   sudo systemctl status smart-lock.service
 
-**Solution:** Set a static IP address on your Raspberry Pi or configure DHCP reservation on your router.
+5. View logs:
+   sudo journalctl -u smart-lock.service -f
 
-## API Endpoints
+SECURITY NOTES:
+---------------
+- This setup is for LOCAL NETWORK USE ONLY
+- Do not expose port 8000 to the internet without proper security
+- Consider adding authentication for production use
+- Use HTTPS in production environments
 
-- GET  /                    - Health check
-- GET  /lock/state          - Get current lock state
-- POST /lock/command        - Send lock/unlock command
-- GET  /camera/live         - Live MJPEG camera stream
-- GET  /clips               - List motion clips
-- GET  /clips/{filename}    - Download specific clip
-- GET  /activity            - Get activity logs
-- WS   /ws/lock             - WebSocket for real-time updates
-
-## Troubleshooting
-
-### Camera Not Working
-- Check camera cable connection
-- Verify camera is enabled in raspi-config
-- Test with: `libcamera-hello`
-
-### GPIO Permission Issues
-- Add user to gpio group: `sudo usermod -a -G gpio pi`
-- Reboot: `sudo reboot`
-
-### Port Already in Use
-- Check running processes: `sudo lsof -i :8000`
-- Kill process: `sudo kill -9 <PID>`
-
-### Motion Detection Too Sensitive
-- Adjust threshold in motion_detection.py
-- Increase min_area parameter
-
-## Security Recommendations
-
-1. Change default credentials
-2. Use HTTPS with SSL certificates
-3. Implement authentication tokens
-4. Set up firewall rules
-5. Keep system updated
-6. Use strong passwords
-7. Enable fail2ban for SSH protection
-
-## Performance Optimization
-
-- Reduce camera resolution for better performance
-- Adjust motion detection sensitivity
-- Limit clip recording duration
-- Clean up old clips regularly
-- Monitor CPU and memory usage
-
-## Maintenance
-
-### View Logs
-```bash
-sudo journalctl -u smartlock.service -f
-```
-
-### Restart Service
-```bash
-sudo systemctl restart smartlock.service
-```
-
-### Clean Up Old Clips
-```bash
-find clips/ -type f -mtime +7 -delete
-```
-
-## Support
-
-For issues and questions, check the project documentation or create an issue on GitHub.
+SUPPORT:
+--------
+For issues or questions, check the project documentation or create an issue
+on the project repository.

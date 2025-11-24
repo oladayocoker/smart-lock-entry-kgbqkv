@@ -41,26 +41,37 @@ class CameraStream:
         self.resolution = resolution
         self.framerate = framerate
         self.output = StreamingOutput()
+        self.camera = None
+        self.encoder = None
         
         if PICAMERA_AVAILABLE:
             try:
                 # Initialize Pi Camera
                 self.camera = Picamera2()
+                
+                # Create video configuration
                 config = self.camera.create_video_configuration(
-                    main={"size": resolution}
+                    main={"size": resolution, "format": "RGB888"}
                 )
                 self.camera.configure(config)
                 
+                # Start camera
+                self.camera.start()
+                
+                # Give camera time to warm up
+                time.sleep(2)
+                
                 # Start recording to output
-                encoder = JpegEncoder()
-                self.camera.start_recording(encoder, FileOutput(self.output))
+                self.encoder = JpegEncoder()
+                self.camera.start_recording(self.encoder, FileOutput(self.output))
                 
                 print(f"Camera initialized: {resolution[0]}x{resolution[1]} @ {framerate}fps")
             except Exception as e:
                 print(f"Error initializing camera: {e}")
+                print("Falling back to simulation mode")
                 self.camera = None
+                self.encoder = None
         else:
-            self.camera = None
             print("Camera initialized in simulation mode")
     
     def generate_frames(self):
@@ -125,7 +136,9 @@ class CameraStream:
         print("Cleaning up camera...")
         if PICAMERA_AVAILABLE and self.camera is not None:
             try:
-                self.camera.stop_recording()
+                if self.encoder:
+                    self.camera.stop_recording()
+                self.camera.stop()
                 self.camera.close()
             except Exception as e:
                 print(f"Error cleaning up camera: {e}")

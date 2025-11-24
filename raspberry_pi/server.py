@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from contextlib import asynccontextmanager
 import json
 import asyncio
 from datetime import datetime
@@ -14,22 +15,6 @@ from pathlib import Path
 from motor import LockMotor
 from camera_stream import CameraStream
 from motion_detection import MotionDetector
-
-app = FastAPI(title="Smart Lock Entry API")
-
-# CORS middleware to allow mobile app connections
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Initialize components
-lock_motor = LockMotor()
-camera_stream = CameraStream()
-motion_detector = MotionDetector()
 
 # WebSocket connections manager
 class ConnectionManager:
@@ -54,6 +39,120 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# Global components
+lock_motor = None
+camera_stream = None
+motion_detector = None
+activity_logs = []
+lock_state = {"isLocked": True, "timestamp": datetime.now().isoformat()}
+motion_task = None
+
+def add_activity_log(action: str, user: Optional[str] = None, details: Optional[str] = None):
+    """Add an activity log entry"""
+    log = {
+        "id": str(len(activity_logs) + 1),
+        "action": action,
+        "timestamp": datetime.now().isoformat(),
+        "user": user,
+        "details": details,
+    }
+    activity_logs.append(log)
+    return log
+
+async def motion_detection_task():
+    """Background task for motion detection"""
+    global motion_detector, manager
+    while True:
+        try:
+            # Check for motion every second
+            if motion_detector and motion_detector.detect_motion():
+                print("Motion detected! Recording clip...")
+                
+                # Record clip
+                clip_filename = motion_detector.record_clip()
+                
+                # Log activity
+                add_activity_log(
+                    "Motion detected",
+                    details=f"Recorded clip: {clip_filename}"
+                )
+                
+                # Broadcast motion event to connected clients
+                await manager.broadcast({
+                    "type": "motion_detected",
+                    "timestamp": datetime.now().isoformat(),
+                    "clip": clip_filename,
+                })
+            
+            await asyncio.sleep(1)
+        
+        except Exception as e:
+            print(f"Error in motion detection: {e}")
+            await asyncio.sleep(5)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    global lock_motor, camera_stream, motion_detector, motion_task
+    
+    # Startup
+    print("Starting Smart Lock Entry API...")
+    print("Initializing components...")
+    
+    try:
+        # Initialize components
+        lock_motor = LockMotor()
+        camera_stream = CameraStream()
+        motion_detector = MotionDetector()
+        
+        # Create clips directory if it doesn't exist
+        Path("clips").mkdir(exist_ok=True)
+        
+        # Add initial activity log
+        add_activity_log("System started", details="Smart Lock Entry system initialized")
+        
+        # Start motion detection in background
+        motion_task = asyncio.create_task(motion_detection_task())
+        
+        print("All components initialized successfully!")
+    except Exception as e:
+        print(f"Error during startup: {e}")
+    
+    yield
+    
+    # Shutdown
+    print("Shutting down Smart Lock Entry API...")
+    
+    # Cancel motion detection task
+    if motion_task:
+        motion_task.cancel()
+        try:
+            await motion_task
+        except asyncio.CancelledError:
+            print("Motion detection task cancelled")
+    
+    # Cleanup components
+    if camera_stream:
+        camera_stream.cleanup()
+    if lock_motor:
+        lock_motor.cleanup()
+    if motion_detector:
+        motion_detector.cleanup()
+    
+    print("Shutdown complete")
+
+# Create FastAPI app with lifespan
+app = FastAPI(title="Smart Lock Entry API", lifespan=lifespan)
+
+# CORS middleware to allow mobile app connections
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Pydantic models
 class LockCommand(BaseModel):
     command: str  # "lock" or "unlock"
@@ -73,22 +172,6 @@ class MotionClipResponse(BaseModel):
     filename: str
     timestamp: str
     duration: int
-
-# In-memory storage (in production, use a database)
-activity_logs = []
-lock_state = {"isLocked": True, "timestamp": datetime.now().isoformat()}
-
-def add_activity_log(action: str, user: Optional[str] = None, details: Optional[str] = None):
-    """Add an activity log entry"""
-    log = {
-        "id": str(len(activity_logs) + 1),
-        "action": action,
-        "timestamp": datetime.now().isoformat(),
-        "user": user,
-        "details": details,
-    }
-    activity_logs.append(log)
-    return log
 
 # API Endpoints
 
@@ -119,10 +202,11 @@ async def set_lock_command(command: LockCommand):
         is_locked = command.command == "lock"
         
         # Control the motor
-        if is_locked:
-            lock_motor.lock()
-        else:
-            lock_motor.unlock()
+        if lock_motor:
+            if is_locked:
+                lock_motor.lock()
+            else:
+                lock_motor.unlock()
         
         # Update state
         lock_state = {
@@ -153,6 +237,9 @@ async def set_lock_command(command: LockCommand):
 async def get_camera_stream():
     """Get live MJPEG camera stream"""
     try:
+        if not camera_stream:
+            raise HTTPException(status_code=503, detail="Camera not initialized")
+        
         return StreamingResponse(
             camera_stream.generate_frames(),
             media_type="multipart/x-mixed-replace; boundary=frame"
@@ -225,60 +312,6 @@ async def websocket_lock_state(websocket: WebSocket):
     except Exception as e:
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
-
-# Background task for motion detection
-@app.on_event("startup")
-async def startup_event():
-    """Start background tasks on server startup"""
-    print("Starting Smart Lock Entry API...")
-    print("Initializing motion detection...")
-    
-    # Create clips directory if it doesn't exist
-    Path("clips").mkdir(exist_ok=True)
-    
-    # Add initial activity log
-    add_activity_log("System started", details="Smart Lock Entry system initialized")
-    
-    # Start motion detection in background
-    asyncio.create_task(motion_detection_task())
-
-async def motion_detection_task():
-    """Background task for motion detection"""
-    while True:
-        try:
-            # Check for motion every second
-            if motion_detector.detect_motion():
-                print("Motion detected! Recording clip...")
-                
-                # Record clip
-                clip_filename = motion_detector.record_clip()
-                
-                # Log activity
-                add_activity_log(
-                    "Motion detected",
-                    details=f"Recorded clip: {clip_filename}"
-                )
-                
-                # Broadcast motion event to connected clients
-                await manager.broadcast({
-                    "type": "motion_detected",
-                    "timestamp": datetime.now().isoformat(),
-                    "clip": clip_filename,
-                })
-            
-            await asyncio.sleep(1)
-        
-        except Exception as e:
-            print(f"Error in motion detection: {e}")
-            await asyncio.sleep(5)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on server shutdown"""
-    print("Shutting down Smart Lock Entry API...")
-    camera_stream.cleanup()
-    lock_motor.cleanup()
-    motion_detector.cleanup()
 
 if __name__ == "__main__":
     import uvicorn
