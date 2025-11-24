@@ -27,6 +27,16 @@ export default function SettingsScreen() {
       return;
     }
 
+    // Check for loopback addresses
+    if (piBaseUrl.includes('127.0.0.1') || piBaseUrl.includes('127.0.1.1') || piBaseUrl.includes('localhost')) {
+      Alert.alert(
+        'Invalid IP Address',
+        'You cannot use 127.0.0.1, 127.0.1.1, or localhost. These are loopback addresses that only work on the Raspberry Pi itself.\n\nPlease use your Raspberry Pi\'s actual network IP address (e.g., 192.168.1.150).\n\nRun "hostname -I" on your Raspberry Pi and use the first IP that starts with 192.168 or 10.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateSettings({
@@ -97,10 +107,28 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={commonStyles.subtitle}>Device Configuration</Text>
         
+        <View style={[commonStyles.card, styles.helpCard]}>
+          <IconSymbol
+            ios_icon_name="info.circle.fill"
+            android_material_icon_name="info"
+            size={24}
+            color={colors.primary}
+          />
+          <View style={styles.helpText}>
+            <Text style={[commonStyles.text, { fontWeight: '600' }]}>How to find your Raspberry Pi IP:</Text>
+            <Text style={[commonStyles.textSecondary, { marginTop: 4 }]}>
+              1. On your Raspberry Pi, run: hostname -I{'\n'}
+              2. Use the IP that starts with 192.168 or 10{'\n'}
+              3. Do NOT use 127.0.0.1 or 127.0.1.1{'\n'}
+              4. Example: http://192.168.1.150:8000
+            </Text>
+          </View>
+        </View>
+        
         <Text style={[commonStyles.text, styles.label]}>Raspberry Pi URL</Text>
         <TextInput
           style={commonStyles.input}
-          placeholder="http://192.168.1.100:8000"
+          placeholder="http://192.168.1.150:8000"
           placeholderTextColor={colors.textSecondary}
           value={piBaseUrl}
           onChangeText={setPiBaseUrl}
@@ -196,6 +224,15 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 32,
+  },
+  helpCard: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+    backgroundColor: colors.card,
+  },
+  helpText: {
+    flex: 1,
   },
   label: {
     marginBottom: 8,
