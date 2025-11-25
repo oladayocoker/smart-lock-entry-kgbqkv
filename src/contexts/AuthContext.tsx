@@ -26,21 +26,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadStoredAuth = async () => {
     try {
-      console.log('Loading stored auth...');
+      console.log('🔍 Loading stored auth...');
       const storedUser = await AsyncStorage.getItem('user');
       const storedGuest = await AsyncStorage.getItem('isGuest');
       
       if (storedUser) {
-        console.log('Found stored user:', storedUser);
+        console.log('✅ Found stored user:', storedUser);
         setUser(JSON.parse(storedUser));
       } else if (storedGuest === 'true') {
-        console.log('Found guest mode');
+        console.log('✅ Found guest mode');
         setIsGuest(true);
       } else {
-        console.log('No stored auth found');
+        console.log('ℹ️ No stored auth found');
       }
     } catch (error) {
-      console.log('Error loading stored auth:', error);
+      console.log('❌ Error loading stored auth:', error);
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string) => {
     try {
-      console.log('Logging in user:', username);
+      console.log('🔐 Logging in user:', username);
       // In a real app, this would call your backend API
       // For now, we'll simulate a successful login
       const mockUser: User = {
@@ -61,16 +61,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsGuest(false);
       await AsyncStorage.setItem('user', JSON.stringify(mockUser));
       await AsyncStorage.removeItem('isGuest');
-      console.log('Login successful');
+      console.log('✅ Login successful');
     } catch (error) {
-      console.log('Login error:', error);
+      console.log('❌ Login error:', error);
       throw new Error('Login failed');
     }
   };
 
   const register = async (username: string, email: string, password: string) => {
     try {
-      console.log('Registering user:', username);
+      console.log('📝 Registering user:', username);
       // In a real app, this would call your backend API
       const mockUser: User = {
         id: '1',
@@ -82,46 +82,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsGuest(false);
       await AsyncStorage.setItem('user', JSON.stringify(mockUser));
       await AsyncStorage.removeItem('isGuest');
-      console.log('Registration successful');
+      console.log('✅ Registration successful');
     } catch (error) {
-      console.log('Register error:', error);
+      console.log('❌ Register error:', error);
       throw new Error('Registration failed');
     }
   };
 
   const logout = async () => {
     try {
-      console.log('=== LOGOUT STARTED ===');
-      console.log('Current user before logout:', user);
-      console.log('Current isGuest before logout:', isGuest);
+      console.log('🚪 === LOGOUT STARTED ===');
+      console.log('📊 Current user before logout:', user);
+      console.log('📊 Current isGuest before logout:', isGuest);
       
       // Clear state FIRST - this is important for immediate UI update
       setUser(null);
       setIsGuest(false);
-      console.log('State cleared - user set to null, isGuest set to false');
+      console.log('✅ State cleared - user set to null, isGuest set to false');
       
       // Then clear AsyncStorage
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isGuest');
-      console.log('AsyncStorage cleared successfully');
+      console.log('✅ AsyncStorage cleared successfully');
       
-      console.log('=== LOGOUT COMPLETED ===');
+      console.log('🚪 === LOGOUT COMPLETED ===');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ Logout error:', error);
       throw error;
     }
   };
 
   const continueAsGuest = async () => {
     try {
-      console.log('Continuing as guest...');
+      console.log('👤 Continuing as guest...');
       setIsGuest(true);
       setUser(null);
       await AsyncStorage.setItem('isGuest', 'true');
       await AsyncStorage.removeItem('user');
-      console.log('Guest mode activated');
+      console.log('✅ Guest mode activated');
     } catch (error) {
-      console.log('Guest mode error:', error);
+      console.log('❌ Guest mode error:', error);
     }
   };
 

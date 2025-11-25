@@ -39,14 +39,16 @@ export default function SettingsScreen() {
 
     setIsSaving(true);
     try {
+      console.log('💾 Saving settings...');
       await updateSettings({
         piBaseUrl,
         cameraEnabled,
         motionDetectionEnabled,
       });
+      console.log('✅ Settings saved successfully');
       Alert.alert('Success', 'Settings saved successfully');
     } catch (error) {
-      console.log('Error saving settings:', error);
+      console.log('❌ Error saving settings:', error);
       Alert.alert('Error', 'Failed to save settings');
     } finally {
       setIsSaving(false);
@@ -67,22 +69,22 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('=== LOGOUT BUTTON PRESSED ===');
+              console.log('🔴 === LOGOUT BUTTON PRESSED ===');
               
               // Perform logout - this will clear state immediately
               await logout();
-              console.log('Logout function completed');
+              console.log('✅ Logout function completed');
               
               // Use a small delay to ensure state propagates
               setTimeout(() => {
-                console.log('Navigating to login screen...');
+                console.log('🔄 Navigating to login screen...');
                 // Navigate to the login screen using the correct path
                 router.replace('/auth/login');
-                console.log('Navigation command executed');
+                console.log('✅ Navigation command executed');
               }, 100);
               
             } catch (error) {
-              console.error('Logout error in settings:', error);
+              console.error('❌ Logout error in settings:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           },
