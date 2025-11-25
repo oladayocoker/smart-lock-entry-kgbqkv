@@ -46,6 +46,7 @@ export default function SettingsScreen() {
       });
       Alert.alert('Success', 'Settings saved successfully');
     } catch (error) {
+      console.log('Error saving settings:', error);
       Alert.alert('Error', 'Failed to save settings');
     } finally {
       setIsSaving(false);
@@ -62,8 +63,18 @@ export default function SettingsScreen() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await logout();
-            router.replace('/auth/login');
+            try {
+              console.log('Logging out...');
+              await logout();
+              console.log('Logout complete, navigating to login...');
+              // Use a small delay to ensure state is updated
+              setTimeout(() => {
+                router.replace('/auth/login');
+              }, 100);
+            } catch (error) {
+              console.log('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
           },
         },
       ]

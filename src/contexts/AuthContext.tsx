@@ -26,13 +26,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadStoredAuth = async () => {
     try {
+      console.log('Loading stored auth...');
       const storedUser = await AsyncStorage.getItem('user');
       const storedGuest = await AsyncStorage.getItem('isGuest');
       
       if (storedUser) {
+        console.log('Found stored user:', storedUser);
         setUser(JSON.parse(storedUser));
       } else if (storedGuest === 'true') {
+        console.log('Found guest mode');
         setIsGuest(true);
+      } else {
+        console.log('No stored auth found');
       }
     } catch (error) {
       console.log('Error loading stored auth:', error);
@@ -43,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string) => {
     try {
+      console.log('Logging in user:', username);
       // In a real app, this would call your backend API
       // For now, we'll simulate a successful login
       const mockUser: User = {
@@ -55,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsGuest(false);
       await AsyncStorage.setItem('user', JSON.stringify(mockUser));
       await AsyncStorage.removeItem('isGuest');
+      console.log('Login successful');
     } catch (error) {
       console.log('Login error:', error);
       throw new Error('Login failed');
@@ -63,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (username: string, email: string, password: string) => {
     try {
+      console.log('Registering user:', username);
       // In a real app, this would call your backend API
       const mockUser: User = {
         id: '1',
@@ -74,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsGuest(false);
       await AsyncStorage.setItem('user', JSON.stringify(mockUser));
       await AsyncStorage.removeItem('isGuest');
+      console.log('Registration successful');
     } catch (error) {
       console.log('Register error:', error);
       throw new Error('Registration failed');
@@ -82,21 +91,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      console.log('Logging out...');
+      console.log('Current user:', user);
+      console.log('Current isGuest:', isGuest);
+      
+      // Clear state first
       setUser(null);
       setIsGuest(false);
+      
+      // Then clear storage
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isGuest');
+      
+      console.log('Logout complete - state cleared');
+      console.log('User after logout:', null);
+      console.log('isGuest after logout:', false);
     } catch (error) {
       console.log('Logout error:', error);
+      throw error;
     }
   };
 
   const continueAsGuest = async () => {
     try {
+      console.log('Continuing as guest...');
       setIsGuest(true);
       setUser(null);
       await AsyncStorage.setItem('isGuest', 'true');
       await AsyncStorage.removeItem('user');
+      console.log('Guest mode activated');
     } catch (error) {
       console.log('Guest mode error:', error);
     }
