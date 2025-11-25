@@ -95,16 +95,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Current user before logout:', user);
       console.log('Current isGuest before logout:', isGuest);
       
-      // Clear AsyncStorage first
+      // Clear state FIRST - this is important for immediate UI update
+      setUser(null);
+      setIsGuest(false);
+      console.log('State cleared - user set to null, isGuest set to false');
+      
+      // Then clear AsyncStorage
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isGuest');
       console.log('AsyncStorage cleared successfully');
       
-      // Then clear state
-      setUser(null);
-      setIsGuest(false);
-      
-      console.log('State cleared - user set to null, isGuest set to false');
       console.log('=== LOGOUT COMPLETED ===');
     } catch (error) {
       console.error('Logout error:', error);

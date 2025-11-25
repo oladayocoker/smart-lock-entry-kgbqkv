@@ -69,14 +69,17 @@ export default function SettingsScreen() {
             try {
               console.log('=== LOGOUT BUTTON PRESSED ===');
               
-              // Perform logout
+              // Perform logout - this will clear state immediately
               await logout();
               console.log('Logout function completed');
               
-              // Navigate to login screen
-              console.log('Navigating to login screen...');
-              router.replace('/auth/login');
-              console.log('Navigation command executed');
+              // Use a small delay to ensure state propagates
+              setTimeout(() => {
+                console.log('Navigating to login screen...');
+                // Navigate to the login screen using the correct path
+                router.replace('/auth/login');
+                console.log('Navigation command executed');
+              }, 100);
               
             } catch (error) {
               console.error('Logout error in settings:', error);
