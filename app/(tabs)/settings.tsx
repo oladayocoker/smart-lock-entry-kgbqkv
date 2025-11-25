@@ -53,31 +53,39 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Cancel', 
+          style: 'cancel' 
+        },
         {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('Logging out...');
+              console.log('=== LOGOUT BUTTON PRESSED ===');
+              
+              // Perform logout
               await logout();
-              console.log('Logout complete, navigating to login...');
-              // Use a small delay to ensure state is updated
-              setTimeout(() => {
-                router.replace('/auth/login');
-              }, 100);
+              console.log('Logout function completed');
+              
+              // Navigate to login screen
+              console.log('Navigating to login screen...');
+              router.replace('/auth/login');
+              console.log('Navigation command executed');
+              
             } catch (error) {
-              console.log('Logout error:', error);
+              console.error('Logout error in settings:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           },
         },
-      ]
+      ],
+      { cancelable: false }
     );
   };
 

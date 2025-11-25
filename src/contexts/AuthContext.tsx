@@ -91,23 +91,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      console.log('Logging out...');
-      console.log('Current user:', user);
-      console.log('Current isGuest:', isGuest);
+      console.log('=== LOGOUT STARTED ===');
+      console.log('Current user before logout:', user);
+      console.log('Current isGuest before logout:', isGuest);
       
-      // Clear state first
+      // Clear AsyncStorage first
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('isGuest');
+      console.log('AsyncStorage cleared successfully');
+      
+      // Then clear state
       setUser(null);
       setIsGuest(false);
       
-      // Then clear storage
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('isGuest');
-      
-      console.log('Logout complete - state cleared');
-      console.log('User after logout:', null);
-      console.log('isGuest after logout:', false);
+      console.log('State cleared - user set to null, isGuest set to false');
+      console.log('=== LOGOUT COMPLETED ===');
     } catch (error) {
-      console.log('Logout error:', error);
+      console.error('Logout error:', error);
       throw error;
     }
   };

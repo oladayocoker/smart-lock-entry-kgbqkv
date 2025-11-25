@@ -77,6 +77,7 @@ export default function HomeScreen() {
     setIsRefreshing(false);
   };
 
+  // Show loading state while checking authentication
   if (authLoading) {
     return (
       <View style={[commonStyles.container, commonStyles.center]}>
@@ -85,7 +86,9 @@ export default function HomeScreen() {
     );
   }
 
+  // Redirect to login if not authenticated
   if (!user && !isGuest) {
+    console.log('User not authenticated, redirecting to login...');
     return <Redirect href="/auth/login" />;
   }
 
